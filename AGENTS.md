@@ -11,6 +11,7 @@ A composite GitHub Action (`action.yml`) that installs the [ecspresso](https://g
 - Default branch: `main`
 - Do not commit directly to `main`. Always create a feature branch first.
 - Releases are managed by [tagpr](https://github.com/Songmu/tagpr). Merging the tagpr release PR creates a full version tag (e.g. `v3.1.0`) and a GitHub Release, and the workflow moves the major tag (e.g. `v3`) to it.
+- The release version is kept in `VERSION` (without the `v` prefix). To bump the major or minor version, edit `VERSION` in the tagpr release PR, or add the `major` / `minor` label to it.
 - Never move or delete full version tags. Immutable releases are enabled.
 
 ## Testing
