@@ -30,7 +30,7 @@ jobs:
         uses: ./
         with:
           version: latest
-      - run: ecspresso version 2>&1 | grep -F v2.
+      - run: ecspresso version 2>&1 | grep -Ex 'ecspresso v([2-9]|[1-9][0-9]+)\.[0-9]+\.[0-9]+'
 
       - name: specific version
         uses: ./
