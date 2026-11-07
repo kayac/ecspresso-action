@@ -1,0 +1,32 @@
+name: tagpr
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  tagpr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: Songmu/tagpr@v1.22.0
+        id: tagpr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Move the major tag (e.g. v3) to the new release.
+      # Full version tags (e.g. v3.1.0) are never moved.
+      - name: Update major tag
+        if: ${{ steps.tagpr.outputs.tag != '' }}
+        env:
+          TAG: ${{ steps.tagpr.outputs.tag }}
+        run: |
+          set -euo pipefail
+          MAJOR="${TAG%%.*}"
+          git fetch --tags --force origin
+          git tag -f "${MAJOR}" "${TAG}^{commit}"
+          git push -f origin "refs/tags/${MAJOR}"

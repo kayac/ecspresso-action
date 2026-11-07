@@ -1,0 +1,109 @@
+name: ecspresso
+description: Install ecspresso, a deployment tool for Amazon ECS
+branding:
+  icon: package
+  color: orange
+inputs:
+  version:
+    description: "A version to install ecspresso (e.g. v2.8.8, or latest)"
+    default: latest
+    required: false
+  version-file:
+    description: "File containing the ecspresso version. Example: .ecspresso-version"
+    required: false
+  github-token:
+    description: "The token used when calling GitHub API"
+    required: false
+    default: ${{ github.token }}
+  args:
+    description: "Arguments to pass to ecspresso, split on whitespace"
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - name: Install ecspresso
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_VERSION_FILE: ${{ inputs.version-file }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -euo pipefail
+
+        if [[ "$(uname -s)" != "Linux" ]]; then
+          echo "::error::Unsupported OS: $(uname -s). Only Linux is supported."
+          exit 1
+        fi
+        case "$(uname -m)" in
+          x86_64) GOARCH="amd64" ;;
+          aarch64 | arm64) GOARCH="arm64" ;;
+          *)
+            echo "::error::Unsupported architecture: $(uname -m)"
+            exit 1
+            ;;
+        esac
+
+        VERSION="${INPUT_VERSION}"
+        if [[ -n "${INPUT_VERSION_FILE}" ]]; then
+          RAW_VERSION="$(tr -d '[:space:]' < "${INPUT_VERSION_FILE}")"
+          VERSION="v${RAW_VERSION#v}"
+        fi
+
+        if [[ "${VERSION}" == "latest" ]]; then
+          api_request_args=("-sS" "--fail-with-body" "--retry" "3")
+          if [[ -n "${GITHUB_TOKEN}" ]]; then
+            api_request_args+=("-H" "Authorization: Bearer ${GITHUB_TOKEN}")
+          fi
+          VERSION=$(curl "${api_request_args[@]}" https://api.github.com/repos/kayac/ecspresso/releases \
+            | jq --arg matcher "linux.${GOARCH}." -r '
+                [.[]? | select(.tag_name? > "v2.0") | select(.draft == false) | select(.prerelease == false)][0]
+                | select(any(.assets[]?; .name | test($matcher)))
+                | .tag_name // empty')
+          if [[ -z "${VERSION}" ]]; then
+            echo "::error::No matching release found for linux/${GOARCH}"
+            exit 1
+          fi
+        fi
+
+        if [[ ! "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          echo "::error::Invalid version: ${VERSION}"
+          exit 1
+        fi
+
+        BASE_URL="https://github.com/kayac/ecspresso/releases/download/${VERSION}"
+        ARCHIVE="ecspresso_${VERSION#v}_linux_${GOARCH}.tar.gz"
+        echo "VERSION=${VERSION} GOARCH=${GOARCH}"
+        echo "DOWNLOAD_URL=${BASE_URL}/${ARCHIVE}"
+
+        WORKDIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/ecspresso.XXXXXX")"
+        trap 'rm -rf "${WORKDIR}"' EXIT
+        cd "${WORKDIR}"
+        curl -sSfL --retry 3 -o "${ARCHIVE}" "${BASE_URL}/${ARCHIVE}"
+        curl -sSfL --retry 3 -o checksums.txt "${BASE_URL}/checksums.txt"
+
+        awk -v f="${ARCHIVE}" '$2 == f' checksums.txt > "${ARCHIVE}.sha256"
+        if [[ ! -s "${ARCHIVE}.sha256" ]]; then
+          echo "::error::${ARCHIVE} is not listed in checksums.txt"
+          exit 1
+        fi
+        sha256sum --check --strict "${ARCHIVE}.sha256"
+
+        tar xzf "${ARCHIVE}"
+        INSTALL_DIR="${RUNNER_TOOL_CACHE}/ecspresso"
+        mkdir -p "${INSTALL_DIR}"
+        install -m 0755 ecspresso "${INSTALL_DIR}/ecspresso"
+
+        echo "Adding ${INSTALL_DIR} to path..."
+        echo "${INSTALL_DIR}" >> "${GITHUB_PATH}"
+        "${INSTALL_DIR}/ecspresso" version
+    - name: Run ecspresso with args
+      if: ${{ inputs.args != '' }}
+      shell: bash
+      env:
+        INPUT_ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        set -f # disable globbing; args are split on whitespace only
+        # shellcheck disable=SC2086
+        ecspresso ${INPUT_ARGS}
