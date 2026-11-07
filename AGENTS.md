@@ -17,6 +17,8 @@ A composite GitHub Action (`action.yml`) that installs the [ecspresso](https://g
 
 `.github/workflows/test.yml` runs the action from the working tree (`uses: ./`) on pull requests and pushes to `main`. Add a test case there when changing the action's behavior.
 
+- Drop `ubuntu-22.04` from the test matrix when Ubuntu 22.04 reaches end of standard support (April 2027).
+
 ## Pinning Rules
 
 - Workflows under `.github/workflows/` are onboarded to the [workflow dependency lockfile](https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles) (`.github/workflows/actions.lock`). Reference actions by version tag (e.g. `actions/checkout@v6.0.2`) and run `gh actions-lock` to update the lockfile. Do not pin them by SHA.
