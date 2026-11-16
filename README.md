@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: kayac/ecspresso-action@v3
         with:
-          version: v2.8.8 # or latest
+          version: v3.0.0 # or latest
           # version-file: .ecspresso-version
       - run: |
           ecspresso deploy --config ecspresso.yml
@@ -26,14 +26,14 @@ Only Linux runners (x86_64 and arm64) are supported.
 
 | Name | Description | Default |
 |---|---|---|
-| `version` | ecspresso version to install (e.g. `v2.8.8`), or `latest` | `latest` |
+| `version` | ecspresso version to install (e.g. `v3.0.0`), or `latest` | `latest` |
 | `version-file` | File containing the ecspresso version (e.g. `.ecspresso-version`). Takes precedence over `version` | |
 | `github-token` | Token used to call the GitHub API when resolving `latest` | `${{ github.token }}` |
 | `args` | Arguments to pass to `ecspresso` after installation | |
 
 ### `version`
 
-`latest` installs the latest stable ecspresso release (v2.0 or later). The action's own version is independent of the ecspresso version, so `latest` may install a new major version of ecspresso without an action update.
+`latest` installs the ecspresso release marked as [Latest](https://github.com/kayac/ecspresso/releases/latest) on GitHub. It is not always the most recently published one (e.g. it stays on v3.x after a newer v2.x release is published). The action's own version is independent of the ecspresso version, so `latest` may install a new major version of ecspresso without an action update.
 
 Note: `version: latest` is not recommended as it may cause unexpected behavior when a new version of ecspresso is released. Pin a specific version instead.
 
