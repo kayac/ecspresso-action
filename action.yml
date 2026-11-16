@@ -5,7 +5,7 @@ branding:
   color: orange
 inputs:
   version:
-    description: "A version to install ecspresso (e.g. v2.8.8, or latest)"
+    description: "A version to install ecspresso (e.g. v3.0.0, or latest)"
     default: latest
     required: false
   version-file:
@@ -55,10 +55,11 @@ runs:
           if [[ -n "${GITHUB_TOKEN}" ]]; then
             api_request_args+=("-H" "Authorization: Bearer ${GITHUB_TOKEN}")
           fi
-          VERSION=$(curl "${api_request_args[@]}" https://api.github.com/repos/kayac/ecspresso/releases \
+          # The release marked as "Latest" on GitHub. It is not always the most
+          # recently published one (e.g. a v2 release published after v3).
+          VERSION=$(curl "${api_request_args[@]}" https://api.github.com/repos/kayac/ecspresso/releases/latest \
             | jq --arg matcher "linux.${GOARCH}." -r '
-                [.[]? | select(.tag_name? > "v2.0") | select(.draft == false) | select(.prerelease == false)][0]
-                | select(any(.assets[]?; .name | test($matcher)))
+                select(any(.assets[]?; .name | test($matcher)))
                 | .tag_name // empty')
           if [[ -z "${VERSION}" ]]; then
             echo "::error::No matching release found for linux/${GOARCH}"
